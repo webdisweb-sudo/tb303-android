@@ -525,20 +525,35 @@ const S={
 
 // ── AUDIO ─────────────────────────────────────────
 let ctx=null;
-function AC(){if(!ctx)ctx=new(window.AudioContext||window.webkitAudioContext)();return ctx;}
+let masterBus=null;
+function AC(){
+  if(!ctx){
+    ctx=new(window.AudioContext||window.webkitAudioContext)();
+    // Master compressor prevents clipping/dropouts from note overlap or RAT gain
+    masterBus=ctx.createDynamicsCompressor();
+    masterBus.threshold.value=-12;
+    masterBus.knee.value=20;
+    masterBus.ratio.value=4;
+    masterBus.attack.value=0.003;
+    masterBus.release.value=0.15;
+    masterBus.connect(ctx.destination);
+  }
+  return ctx;
+}
 const N=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 function mf(m){return 440*Math.pow(2,(m-69)/12);}
 
 function getStepDur(){
-  // Real TB-303: tempo knob is in quarter-note BPM
-  // Step durations per time mode:
-  // ♩ quarter = 60/BPM  (4 steps per bar of 4/4)
-  // ♪ eighth  = 60/BPM/2 (8 steps per bar)
-  // ♫ triplet = 60/BPM/3 (triplet 8ths = 12 per bar)
-  const b=60/S.tempo;
-  if(S.timeMode===0)return b;
-  if(S.timeMode===1)return b/2;
-  return b/3;
+  // TB-303 TEMPO knob = BPM of quarter notes (40-240)
+  // Default sequencer plays 16th notes: 4 steps per quarter-note beat
+  // Time mode multiplies/divides the base 16th-note grid:
+  // ♩ = normal 16th notes (beat/4)
+  // ♪ = 8th notes (beat/2) — half speed, more space per step
+  // ♫ = 16th note triplets (beat/6) — faster, swung feel
+  const beat=60/S.tempo;
+  if(S.timeMode===0)return beat/4;   // 16th notes (default/normal)
+  if(S.timeMode===1)return beat/2;   // 8th notes
+  return beat/6;                      // 16th triplets
 }
 
 function distCurve(k){
@@ -571,7 +586,7 @@ function schedNote(t,step,dur){
     const rv=a.createGain();rv.gain.value=S.ratVol*1.5;
     vca.connect(ws);ws.connect(rf);rf.connect(rv);out=rv;
   }
-  out.connect(a.destination);osc.start(t);osc.stop(t+gate+0.05);
+  out.connect(masterBus);osc.start(t);osc.stop(t+gate+0.05);
 }
 
 function prevNote(note,oct){
@@ -583,36 +598,79 @@ function prevNote(note,oct){
   const g=a.createGain();
   g.gain.setValueAtTime(S.volume*0.7,a.currentTime);
   g.gain.linearRampToValueAtTime(0.001,a.currentTime+0.25);
-  o.connect(f);f.connect(g);g.connect(a.destination);
+  o.connect(f);f.connect(g);g.connect(masterBus);
   o.start();o.stop(a.currentTime+0.27);
 }
 
-// ── SEQUENCER ─────────────────────────────────────
-let seqT=null,nextT=0,si=0,hlIdx=-1;
-function tick(){
-  const a=AC(),dur=getStepDur();
-  while(nextT<a.currentTime+0.15){
-    schedNote(nextT,S.patterns[S.curPat][si],dur);
-    hl(si);
-    document.getElementById('stepd').textContent=(si+1)+'/16';
-    si=(si+1)%16;nextT+=dur;
+// ── SEQUENCER — precise lookahead scheduler ────────
+// Uses Web Audio clock (sample-accurate) for note timing,
+// and a separate fast polling loop only for UI highlight updates.
+// This avoids setInterval drift entirely — schedule times are
+// always computed from the audio clock, never accumulated in JS time.
+let seqRAF=null, nextStepTime=0, si=0, hlIdx=-1;
+const SCHEDULE_AHEAD=0.5;   // seconds to schedule ahead — must exceed worst-case rAF gap
+
+// Queue of {time, stepIndex} for UI highlight sync
+let uiQueue=[];
+
+function scheduler(){
+  const a=AC();
+  const dur=getStepDur();
+
+  // Safety: if we've drifted too far behind real time (e.g. tab was
+  // backgrounded, or rAF stalled), resync instead of burst-scheduling
+  // hundreds of notes at once.
+  if(nextStepTime < a.currentTime - 0.5){
+    nextStepTime = a.currentTime + 0.05;
+  }
+
+  let guard=0;
+  while(nextStepTime < a.currentTime + SCHEDULE_AHEAD && guard < 64){
+    schedNote(nextStepTime, S.patterns[S.curPat][si], dur);
+    uiQueue.push({time:nextStepTime, idx:si});
+    si=(si+1)%16;
+    nextStepTime += dur;
+    guard++;
   }
 }
+
+function uiLoop(){
+  if(!S.running) return;
+  const a=AC();
+  // Pop any UI events whose time has arrived
+  while(uiQueue.length && uiQueue[0].time <= a.currentTime){
+    const ev=uiQueue.shift();
+    hl(ev.idx);
+    document.getElementById('stepd').textContent=(ev.idx+1)+'/16';
+  }
+  scheduler();
+  // setTimeout is more reliable than requestAnimationFrame for audio
+  // scheduling on mobile WebViews (rAF can throttle/pause unexpectedly).
+  // Actual note timing is still sample-accurate because schedNote() uses
+  // absolute AudioContext time, not this timer's timing.
+  seqRAF=setTimeout(uiLoop, 15);
+}
+
 function hl(i){
   document.querySelector('.step[data-i="'+hlIdx+'"]')?.classList.remove('playing');
   document.querySelector('.step[data-i="'+i+'"]')?.classList.add('playing');
   hlIdx=i;
 }
+
 function startSeq(){
   if(S.running)return;
   const a=AC();if(a.state==='suspended')a.resume();
-  S.running=true;si=0;nextT=a.currentTime+0.05;
-  seqT=setInterval(tick,25);
+  S.running=true; si=0; uiQueue=[];
+  nextStepTime=a.currentTime+0.06;
   document.getElementById('btn-run').classList.add('run-on');
   document.getElementById('run-led').classList.add('on');
+  uiLoop();
 }
+
 function stopSeq(){
-  S.running=false;clearInterval(seqT);
+  S.running=false;
+  if(seqRAF) clearTimeout(seqRAF);
+  seqRAF=null; uiQueue=[];
   document.querySelector('.step[data-i="'+hlIdx+'"]')?.classList.remove('playing');
   hlIdx=-1;
   document.getElementById('btn-run').classList.remove('run-on');
