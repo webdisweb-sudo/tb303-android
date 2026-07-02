@@ -368,10 +368,32 @@ html,body{
 <!-- ROW 3 -->
 <div class="r3">
 
-  <!-- TOP: sequencer + time + rat + write -->
-  <div style="display:flex;gap:.5vh;flex:0 0 auto;">
+  <!-- LEFT COLUMN: controls -->
+  <div class="botleft panel" style="flex:0 0 auto;">
+    <div class="dcrow">
+      <button class="dcbtn" id="btn-dc">D.C.</button>
+      <button class="dcbtn">BAR RST</button>
+    </div>
+    <button class="sbtn" id="btn-clr">PATTERN<br>CLEAR</button>
+    <div class="ledrow">
+      <div class="sled on" id="run-led"></div>
+      <div class="sled"></div>
+      <span class="fnl">RUN/BATT</span>
+    </div>
+    <button class="sbtn" id="btn-run">RUN / STOP</button>
+    <div class="fnl">FUNCTION</div>
+    <div class="ledrow"><div class="sled" id="fn-led"></div><span class="fnl">NORMAL MODE</span></div>
+    <div class="dcrow">
+      <button class="dcbtn">BAR</button>
+      <button class="dcbtn" style="background:#333;color:#aaa;">PATT▶</button>
+    </div>
+  </div>
 
-    <div class="seqblk">
+  <!-- CENTER COLUMN: seq on top, keyboard below — same width -->
+  <div style="flex:1;display:flex;flex-direction:column;gap:.5vh;min-width:0;">
+
+    <!-- Sequencer -->
+    <div class="seqblk" style="flex:0 0 auto;">
       <div style="display:flex;align-items:center;gap:.5vh;flex-shrink:0;">
         <span class="L">SELECTOR</span>
         <div class="patrow" style="flex:1;" id="patrow">
@@ -392,6 +414,60 @@ html,body{
       </div>
     </div>
 
+    <!-- Keyboard — same width as sequencer above -->
+    <div style="flex:1;display:flex;gap:.5vh;min-height:0;">
+
+      <!-- Octave strip -->
+      <div style="display:flex;flex-direction:column;justify-content:center;
+        gap:.4vh;min-width:5.5vh;background:#222;border:1px solid #555;
+        border-radius:3px;padding:.6vh;flex:0 0 auto;">
+        <span class="ptitle" style="text-align:center;font-size:.85vh;">PITCH<br>MODE</span>
+        <span class="pled" style="display:block;margin:0 auto;"></span>
+        <div style="display:flex;flex-direction:column;gap:.3vh;align-items:center;">
+          <span class="fnl" style="color:#aaa;">OCT</span>
+          <button class="octbtn" data-o="-1">-1</button>
+          <button class="octbtn on" data-o="0">+0</button>
+          <button class="octbtn" data-o="1">+1</button>
+        </div>
+      </div>
+
+      <!-- Piano -->
+      <div style="flex:1;background:#222;border:1px solid #555;border-radius:3px;
+        padding:.5vh;display:flex;flex-direction:column;gap:.3vh;min-width:0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;
+          padding:0 .4vh;flex-shrink:0;">
+          <span class="ptitle">KEYBOARD</span>
+          <span id="note-display" style="font-size:1.1vh;font-weight:700;
+            color:#ddc050;font-family:monospace;">— тап шаг → клавиша</span>
+        </div>
+        <div class="piano" id="piano" style="flex:1;">
+          <div class="wk" data-note="0" data-oct="0"><div class="wkn">C</div><div class="wkl"></div></div>
+          <div class="wk" data-note="2" data-oct="0"><div class="wkn">D</div><div class="wkl"></div></div>
+          <div class="wk" data-note="4" data-oct="0"><div class="wkn">E</div><div class="wkl"></div></div>
+          <div class="wk" data-note="5" data-oct="0"><div class="wkn">F</div><div class="wkl"></div></div>
+          <div class="wk" data-note="7" data-oct="0"><div class="wkn">G</div><div class="wkl"></div></div>
+          <div class="wk" data-note="9" data-oct="0"><div class="wkn">A</div><div class="wkl"></div></div>
+          <div class="wk" data-note="11" data-oct="0"><div class="wkn">B</div><div class="wkl"></div></div>
+          <div class="wk" data-note="0" data-oct="1"><div class="wkn">C</div><div class="wkl"></div></div>
+          <div class="blayer">
+            <div class="bsp"><div class="bk" data-note="1" data-oct="0"><div class="bkl"></div></div></div>
+            <div class="bsp"><div class="bk" data-note="3" data-oct="0"><div class="bkl"></div></div></div>
+            <div class="bsp" style="visibility:hidden;pointer-events:none;"></div>
+            <div class="bsp"><div class="bk" data-note="6" data-oct="0"><div class="bkl"></div></div></div>
+            <div class="bsp"><div class="bk" data-note="8" data-oct="0"><div class="bkl"></div></div></div>
+            <div class="bsp"><div class="bk" data-note="10" data-oct="0"><div class="bkl"></div></div></div>
+            <div class="bsp" style="visibility:hidden;pointer-events:none;"></div>
+            <div class="bsp" style="pointer-events:none;"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end keyboard flex -->
+  </div><!-- end center column -->
+
+  <!-- RIGHT COLUMN: time + rat + write — stacked vertically -->
+  <div style="display:flex;gap:.5vh;flex:0 0 auto;">
+
     <div class="timeblk">
       <div class="ttitle">TIME MODE</div>
       <div class="tbtns">
@@ -406,7 +482,7 @@ html,body{
         <div class="tsbtn"><div class="tsled" id="sldled"></div><div class="tsl">SLD</div></div>
       </div>
       <div class="stepdisp">STEP <span id="stepd">—</span></div>
-      <div class="L" style="font-size:.65vh;margin-top:.2vh;">♩=1/4 ♪=1/8 ♫=trip</div>
+      <div class="L" style="font-size:.65vh;margin-top:.3vh;">♩=1/4 ♪=1/8 ♫=trip</div>
     </div>
 
     <div class="ratblk">
@@ -428,79 +504,9 @@ html,body{
       <button class="wb load" id="btn-load">📂 LOAD</button>
     </div>
 
-  </div>
+  </div><!-- end right column -->
 
-  <!-- BOTTOM: left controls + octave + keyboard -->
-  <div style="display:flex;gap:.5vh;flex:1;min-height:0;">
-
-    <!-- Left panel buttons — fully visible now -->
-    <div class="botleft panel" style="flex:0 0 auto;">
-      <div class="dcrow">
-        <button class="dcbtn" id="btn-dc">D.C.</button>
-        <button class="dcbtn">BAR RST</button>
-      </div>
-      <button class="sbtn" id="btn-clr">PATTERN<br>CLEAR</button>
-      <div class="ledrow">
-        <div class="sled on" id="run-led"></div>
-        <div class="sled"></div>
-        <span class="fnl">RUN/BATT</span>
-      </div>
-      <button class="sbtn" id="btn-run">RUN / STOP</button>
-      <div class="fnl">FUNCTION</div>
-      <div class="ledrow"><div class="sled" id="fn-led"></div><span class="fnl">NORMAL MODE</span></div>
-      <div class="dcrow">
-        <button class="dcbtn">BAR</button>
-        <button class="dcbtn" style="background:#333;color:#aaa;">PATT▶</button>
-      </div>
-    </div>
-
-    <!-- Octave -->
-    <div style="display:flex;flex-direction:column;justify-content:center;
-      gap:.4vh;min-width:5.5vh;background:#222;border:1px solid #555;
-      border-radius:3px;padding:.6vh;flex:0 0 auto;">
-      <span class="ptitle" style="text-align:center;font-size:.85vh;">PITCH<br>MODE</span>
-      <span class="pled" style="display:block;margin:0 auto;"></span>
-      <div style="display:flex;flex-direction:column;gap:.3vh;">
-        <span class="fnl" style="color:#aaa;text-align:center;">OCT</span>
-        <button class="octbtn" data-o="-1">-1</button>
-        <button class="octbtn on" data-o="0">+0</button>
-        <button class="octbtn" data-o="1">+1</button>
-      </div>
-    </div>
-
-    <!-- Keyboard -->
-    <div style="flex:1;background:#222;border:1px solid #555;border-radius:3px;
-      padding:.5vh;display:flex;flex-direction:column;gap:.3vh;min-width:0;">
-      <div style="display:flex;justify-content:space-between;align-items:center;
-        padding:0 .4vh;flex-shrink:0;">
-        <span class="ptitle">KEYBOARD — тап шаг, потом клавишу</span>
-        <span id="note-display" style="font-size:1.1vh;font-weight:700;color:#ddc050;font-family:monospace;">—</span>
-      </div>
-      <div class="piano" id="piano" style="flex:1;">
-        <div class="wk" data-note="0" data-oct="0"><div class="wkn">C</div><div class="wkl"></div></div>
-        <div class="wk" data-note="2" data-oct="0"><div class="wkn">D</div><div class="wkl"></div></div>
-        <div class="wk" data-note="4" data-oct="0"><div class="wkn">E</div><div class="wkl"></div></div>
-        <div class="wk" data-note="5" data-oct="0"><div class="wkn">F</div><div class="wkl"></div></div>
-        <div class="wk" data-note="7" data-oct="0"><div class="wkn">G</div><div class="wkl"></div></div>
-        <div class="wk" data-note="9" data-oct="0"><div class="wkn">A</div><div class="wkl"></div></div>
-        <div class="wk" data-note="11" data-oct="0"><div class="wkn">B</div><div class="wkl"></div></div>
-        <div class="wk" data-note="0" data-oct="1"><div class="wkn">C</div><div class="wkl"></div></div>
-        <div class="blayer">
-          <div class="bsp"><div class="bk" data-note="1" data-oct="0"><div class="bkl"></div></div></div>
-          <div class="bsp"><div class="bk" data-note="3" data-oct="0"><div class="bkl"></div></div></div>
-          <div class="bsp" style="visibility:hidden;pointer-events:none;"></div>
-          <div class="bsp"><div class="bk" data-note="6" data-oct="0"><div class="bkl"></div></div></div>
-          <div class="bsp"><div class="bk" data-note="8" data-oct="0"><div class="bkl"></div></div></div>
-          <div class="bsp"><div class="bk" data-note="10" data-oct="0"><div class="bkl"></div></div></div>
-          <div class="bsp" style="visibility:hidden;pointer-events:none;"></div>
-          <div class="bsp" style="pointer-events:none;"></div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-</div>
+</div><!-- end r3 -->
 
 <div id="tip"></div>
 <script>
