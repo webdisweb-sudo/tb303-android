@@ -35,7 +35,7 @@ html,body{
 .r2{flex:0 0 20%;display:flex;align-items:center;
     border-bottom:2px solid #999;padding:0 1vh;gap:2vh;
     background:linear-gradient(180deg,#c8c8c4,#b4b4b0);}
-.r3{flex:1;display:flex;padding:.5vh .5vh;gap:.5vh;min-height:0;
+.r3{flex:1;display:flex;flex-direction:column;padding:.5vh .5vh;gap:.5vh;min-height:0;
     background:linear-gradient(180deg,#b8b8b4,#a8a8a4);}
 
 /* ── COMMON ───────────────────────────────────────── */
@@ -366,7 +366,8 @@ html,body{
 </div>
 
 <!-- ROW 3 -->
-<div class="r3">
+<div class="r3" style="flex-direction:column;padding:.4vh .5vh;gap:.4vh;">
+<div style="display:flex;gap:.5vh;flex:0 0 auto;min-height:0;">
 
   <!-- Left panel -->
   <div class="botleft panel">
@@ -389,40 +390,6 @@ html,body{
     <div class="dcrow">
       <button class="dcbtn">BAR</button>
       <button class="dcbtn" style="background:#333;color:#aaa;">PATT▶</button>
-    </div>
-  </div>
-
-  <!-- Keyboard -->
-  <div class="pitchblk">
-    <div style="display:flex;align-items:center;gap:.5vh;">
-      <span class="ptitle">PITCH MODE</span>
-      <span class="pled"></span>
-    </div>
-    <div class="piano" id="piano">
-      <div class="wk" data-note="0" data-oct="0"><div class="wkn">C</div><div class="wkl"></div></div>
-      <div class="wk" data-note="2" data-oct="0"><div class="wkn">D</div><div class="wkl"></div></div>
-      <div class="wk" data-note="4" data-oct="0"><div class="wkn">E</div><div class="wkl"></div></div>
-      <div class="wk" data-note="5" data-oct="0"><div class="wkn">F</div><div class="wkl"></div></div>
-      <div class="wk" data-note="7" data-oct="0"><div class="wkn">G</div><div class="wkl"></div></div>
-      <div class="wk" data-note="9" data-oct="0"><div class="wkn">A</div><div class="wkl"></div></div>
-      <div class="wk" data-note="11" data-oct="0"><div class="wkn">B</div><div class="wkl"></div></div>
-      <div class="wk" data-note="0" data-oct="1"><div class="wkn">C</div><div class="wkl"></div></div>
-      <div class="blayer">
-        <div class="bsp"><div class="bk" data-note="1" data-oct="0"><div class="bkl"></div></div></div>
-        <div class="bsp"><div class="bk" data-note="3" data-oct="0"><div class="bkl"></div></div></div>
-        <div class="bsp" style="visibility:hidden;pointer-events:none;"></div>
-        <div class="bsp"><div class="bk" data-note="6" data-oct="0"><div class="bkl"></div></div></div>
-        <div class="bsp"><div class="bk" data-note="8" data-oct="0"><div class="bkl"></div></div></div>
-        <div class="bsp"><div class="bk" data-note="10" data-oct="0"><div class="bkl"></div></div></div>
-        <div class="bsp" style="visibility:hidden;pointer-events:none;"></div>
-        <div class="bsp" style="pointer-events:none;"></div>
-      </div>
-    </div>
-    <div class="octrow">
-      <span class="fnl" style="color:#aaa;">OCT</span>
-      <button class="octbtn" data-o="-1">-1</button>
-      <button class="octbtn on" data-o="0">0</button>
-      <button class="octbtn" data-o="1">+1</button>
     </div>
   </div>
 
@@ -504,6 +471,56 @@ html,body{
   </div>
 
 </div>
+</div><!-- end top flex row -->
+
+<!-- KEYBOARD ROW — full width below sequencer -->
+<div style="display:flex;gap:.5vh;flex:1;min-height:0;align-items:stretch;">
+  <!-- Left: octave + labels -->
+  <div style="display:flex;flex-direction:column;justify-content:center;gap:.5vh;
+    min-width:7vh;background:#222;border:1px solid #555;border-radius:3px;padding:.8vh;">
+    <span class="ptitle" style="text-align:center;">PITCH<br>MODE</span>
+    <span class="pled" style="display:block;margin:0 auto;"></span>
+    <div class="octrow" style="flex-direction:column;gap:.3vh;">
+      <span class="fnl" style="color:#aaa;text-align:center;">OCT</span>
+      <button class="octbtn" data-o="-1">-1</button>
+      <button class="octbtn on" data-o="0">+0</button>
+      <button class="octbtn" data-o="1">+1</button>
+    </div>
+  </div>
+
+  <!-- Piano keyboard — full remaining width -->
+  <div style="flex:1;background:#222;border:1px solid #555;border-radius:3px;padding:.5vh;
+    display:flex;flex-direction:column;gap:.5vh;">
+    <!-- Note name display -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:0 .5vh;">
+      <span class="ptitle">KEYBOARD</span>
+      <span id="note-display" style="font-size:1.2vh;font-weight:700;color:#ddc050;
+        font-family:monospace;min-width:4vh;text-align:right;">—</span>
+    </div>
+    <div class="piano" id="piano" style="flex:1;">
+      <div class="wk" data-note="0" data-oct="0"><div class="wkn">C</div><div class="wkl"></div></div>
+      <div class="wk" data-note="2" data-oct="0"><div class="wkn">D</div><div class="wkl"></div></div>
+      <div class="wk" data-note="4" data-oct="0"><div class="wkn">E</div><div class="wkl"></div></div>
+      <div class="wk" data-note="5" data-oct="0"><div class="wkn">F</div><div class="wkl"></div></div>
+      <div class="wk" data-note="7" data-oct="0"><div class="wkn">G</div><div class="wkl"></div></div>
+      <div class="wk" data-note="9" data-oct="0"><div class="wkn">A</div><div class="wkl"></div></div>
+      <div class="wk" data-note="11" data-oct="0"><div class="wkn">B</div><div class="wkl"></div></div>
+      <div class="wk" data-note="0" data-oct="1"><div class="wkn">C</div><div class="wkl"></div></div>
+      <div class="blayer">
+        <div class="bsp"><div class="bk" data-note="1" data-oct="0"><div class="bkl"></div></div></div>
+        <div class="bsp"><div class="bk" data-note="3" data-oct="0"><div class="bkl"></div></div></div>
+        <div class="bsp" style="visibility:hidden;pointer-events:none;"></div>
+        <div class="bsp"><div class="bk" data-note="6" data-oct="0"><div class="bkl"></div></div></div>
+        <div class="bsp"><div class="bk" data-note="8" data-oct="0"><div class="bkl"></div></div></div>
+        <div class="bsp"><div class="bk" data-note="10" data-oct="0"><div class="bkl"></div></div></div>
+        <div class="bsp" style="visibility:hidden;pointer-events:none;"></div>
+        <div class="bsp" style="pointer-events:none;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end r3 column -->
 </div>
 <div id="tip"></div>
 <script>
@@ -516,7 +533,7 @@ const S={
   tempo:120, volume:0.7,
   ratOn:false, ratDist:0.7, ratFlt:0.5, ratVol:0.7,
   timeMode:0,   // 0=quarter 1=eighth 2=triplet
-  running:false, writeMode:false, writeStep:0,
+  running:false, writeMode:false, writeStep:0, editStep:-1,
   curPat:0, curOct:0, selNote:0,
   patterns:Array.from({length:8},()=>
     Array.from({length:16},()=>({on:false,note:0,oct:0,accent:false,slide:false}))
@@ -722,6 +739,12 @@ function knob(id,mn,mx,init,fmt,cb){
 }
 
 // ── RENDER PATTERN ─────────────────────────────────
+function highlightKey(note){
+  document.querySelectorAll('.wk,.bk').forEach(k=>{
+    k.classList.toggle('pr',+k.dataset.note===note);
+  });
+}
+
 function renderPat(){
   S.patterns[S.curPat].forEach((s,i)=>{
     const b=document.querySelector('.step[data-i="'+i+'"]');if(!b)return;
@@ -750,16 +773,36 @@ function buildSteps(){
     s.addEventListener('click',()=>{
       const st=S.patterns[S.curPat][i];
       if(S.writeMode){
+        // In write mode: assign current note to step, advance cursor
         st.note=S.selNote;st.oct=S.curOct;st.on=true;
-        // advance write cursor
         document.querySelector('.step.wcur')?.classList.remove('wcur');
         S.writeStep=(i+1)%16;
         document.querySelector('.step[data-i="'+S.writeStep+'"]')?.classList.add('wcur');
         document.getElementById('stepd').textContent=(S.writeStep+1)+'/16';
+        renderPat();
       } else {
-        st.on=!st.on;
+        // Normal mode: first click selects step for editing (highlights it),
+        // second click on same step toggles it off
+        if(S.editStep===i){
+          // second tap = toggle on/off
+          st.on=!st.on;
+          if(!st.on){ S.editStep=-1; document.querySelector('.step.wcur')?.classList.remove('wcur'); }
+          renderPat();
+        } else {
+          // Select this step for note editing
+          document.querySelector('.step.wcur')?.classList.remove('wcur');
+          S.editStep=i;
+          s.classList.add('wcur');
+          if(st.on){
+            // Show current note on keyboard
+            S.selNote=st.note; S.curOct=st.oct;
+            highlightKey(st.note);
+            document.getElementById('note-display').textContent=N[st.note]+(st.oct!==0?(st.oct>0?'+':'')+st.oct:'');
+          }
+          if(!st.on){ st.on=true; st.note=S.selNote; st.oct=S.curOct; renderPat(); }
+          else renderPat();
+        }
       }
-      renderPat();
     });
     document.getElementById('steps').appendChild(s);
 
@@ -867,10 +910,21 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('.wk,.bk').forEach(k=>{
     k.addEventListener('pointerdown',e=>{
       e.preventDefault();
-      const note=+k.dataset.note,oct=+k.dataset.oct||0;
-      S.selNote=note;S.curOct=oct;
+      const note=+k.dataset.note,oct=+(k.dataset.oct||0)+S.curOct;
+      const noteOct=+k.dataset.note; const keyOct=+k.dataset.oct||0;
+      S.selNote=noteOct;
       document.querySelectorAll('.wk,.bk').forEach(x=>x.classList.remove('pr'));
-      k.classList.add('pr');prevNote(note,oct);
+      k.classList.add('pr');
+      prevNote(noteOct,S.curOct+keyOct);
+      // Update note display
+      const nd=document.getElementById('note-display');
+      if(nd) nd.textContent=N[noteOct]+(S.curOct!==0?(S.curOct>0?'+':'')+S.curOct:'');
+      // If a step is selected for editing, update its note immediately
+      if(S.editStep>=0){
+        const st=S.patterns[S.curPat][S.editStep];
+        st.note=noteOct; st.oct=S.curOct; st.on=true;
+        renderPat();
+      }
     });
     k.addEventListener('pointerup',()=>setTimeout(()=>k.classList.remove('pr'),180));
     k.addEventListener('pointercancel',()=>k.classList.remove('pr'));
@@ -889,6 +943,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('.patbtn').forEach(b=>{
     b.addEventListener('click',()=>{
       S.curPat=+b.dataset.p;
+      S.editStep=-1;
+      document.querySelectorAll('.step.wcur').forEach(x=>x.classList.remove('wcur'));
       document.querySelectorAll('.patbtn').forEach(x=>x.classList.remove('on'));
       b.classList.add('on');renderPat();
     });
