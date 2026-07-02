@@ -529,13 +529,14 @@ let masterBus=null;
 function AC(){
   if(!ctx){
     ctx=new(window.AudioContext||window.webkitAudioContext)();
-    // Master compressor prevents clipping/dropouts from note overlap or RAT gain
+    // Light limiter only catches true overs; avoids audible pumping/ducking
+    // that a more aggressive compressor causes when many notes overlap.
     masterBus=ctx.createDynamicsCompressor();
-    masterBus.threshold.value=-12;
-    masterBus.knee.value=20;
-    masterBus.ratio.value=4;
-    masterBus.attack.value=0.003;
-    masterBus.release.value=0.15;
+    masterBus.threshold.value=-3;
+    masterBus.knee.value=0;
+    masterBus.ratio.value=20;
+    masterBus.attack.value=0.001;
+    masterBus.release.value=0.05;
     masterBus.connect(ctx.destination);
   }
   return ctx;
@@ -566,7 +567,7 @@ function schedNote(t,step,dur){
   if(!step.on)return;
   const a=AC();
   const freq=mf(36+step.note+step.oct*12+Math.round(S.tuning));
-  const gate=step.slide?dur*1.05:dur*0.55;
+  const gate=Math.max(0.02, step.slide?dur*1.05:dur*0.55);
   const isA=step.accent;
   const osc=a.createOscillator();osc.type=S.wave;osc.frequency.setValueAtTime(freq,t);
   const flt=a.createBiquadFilter();flt.type='lowpass';flt.Q.setValueAtTime(S.res,t);
@@ -579,14 +580,30 @@ function schedNote(t,step,dur){
   vca.gain.setValueAtTime(pk,t+gate-0.005);
   vca.gain.linearRampToValueAtTime(0.001,t+gate);
   osc.connect(flt);flt.connect(vca);
+
   let out=vca;
+  let ratNodes=null;
   if(S.ratOn){
     const ws=a.createWaveShaper();ws.curve=distCurve(S.ratDist);ws.oversample='4x';
     const rf=a.createBiquadFilter();rf.type='lowpass';rf.frequency.value=200+S.ratFlt*6000;
     const rv=a.createGain();rv.gain.value=S.ratVol*1.5;
     vca.connect(ws);ws.connect(rf);rf.connect(rv);out=rv;
+    ratNodes=[ws,rf,rv];
   }
-  out.connect(masterBus);osc.start(t);osc.stop(t+gate+0.05);
+  out.connect(masterBus);
+  osc.start(t);
+  osc.stop(t+gate+0.05);
+
+  // Explicit cleanup: disconnect every node once playback has finished,
+  // so the audio graph doesn't accumulate thousands of dead nodes over
+  // a long session (which causes dropouts/crackles on mobile WebViews).
+  const cleanupDelay=Math.max(0,(t-a.currentTime)+gate+0.1)*1000;
+  setTimeout(()=>{
+    try{
+      osc.disconnect();flt.disconnect();vca.disconnect();
+      if(ratNodes)ratNodes.forEach(n=>n.disconnect());
+    }catch(e){}
+  },cleanupDelay);
 }
 
 function prevNote(note,oct){
