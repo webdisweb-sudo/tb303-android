@@ -488,13 +488,14 @@ html,body{
       <div class="wb" id="btn-wrt" style="cursor:pointer;"><div class="wbled" id="wrtled"></div>WRITE</div>
       <button class="wb" id="btn-tap">TAP</button>
       <button class="wb save" id="btn-save">💾</button>
-      <button class="wb load" id="btn-load">📂</button>
+      <label for="file-load" class="wb load" style="display:block;text-align:center;cursor:pointer;">📂</label>
     </div>
   </div>
 
 </div><!-- end r3 -->
 
 <div id="tip"></div>
+<input type="file" id="file-load" accept=".tb303,.json" style="display:none;">
 <script>
 (function(){
 'use strict';
@@ -797,24 +798,35 @@ function save(){
   a.download=name.replace(/\s+/g,'_')+'.tb303';a.click();
 }
 function load(){
-  const inp=document.createElement('input');inp.type='file';inp.accept='.tb303,.json';
-  inp.onchange=e=>{
-    const f=e.target.files[0];if(!f)return;
-    const r=new FileReader();
-    r.onload=ev=>{
-      try{
-        const d=JSON.parse(ev.target.result);
-        if(!d.pattern||d.pattern.length!==16){alert('Неверный формат');return;}
-        S.patterns[S.curPat]=d.pattern;
-        if(d.bpm){S.tempo=d.bpm;document.getElementById('bpmv').textContent=Math.round(S.tempo);}
-        if(d.timeMode!=null){
-          S.timeMode=d.timeMode;
-          document.querySelectorAll('.tbtn').forEach((b,i)=>b.classList.toggle('on',i===S.timeMode));
-        }
-        renderPat();alert('✓ '+( d.name||f.name));
-      }catch(e){alert('Ошибка: '+e.message);}
-    };r.readAsText(f);
-  };inp.click();
+  // Trigger the persistent hidden file input (works in Android WebView)
+  document.getElementById('file-load').click();
+}
+
+function handleFileLoad(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(!d.pattern||d.pattern.length!==16){alert('Неверный формат');return;}
+      S.patterns[S.curPat]=d.pattern;
+      if(d.bpm){
+        S.tempo=d.bpm;
+        document.getElementById('bpmv').textContent=Math.round(S.tempo);
+        const kd=document.querySelector('#k-tempo .kdot');
+        if(kd)kd.style.transform=`translate(-50%,-100%) rotate(${-135+((S.tempo-40)/200)*270}deg)`;
+      }
+      if(d.timeMode!=null){
+        S.timeMode=d.timeMode;
+        document.querySelectorAll('.tbtn').forEach((b,i)=>b.classList.toggle('on',i===S.timeMode));
+      }
+      renderPat();
+      // Reset input so same file can be loaded again
+      e.target.value='';
+      alert('✓ Загружено: '+(d.name||f.name));
+    }catch(err){alert('Ошибка: '+err.message);}
+  };
+  r.readAsText(f);
 }
 
 // ── TAP TEMPO ──────────────────────────────────────
@@ -962,7 +974,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
   document.getElementById('btn-tap').addEventListener('click',tap);
   document.getElementById('btn-save').addEventListener('click',save);
-  document.getElementById('btn-load').addEventListener('click',load);
+  // File input listener — works in Android WebView unlike programmatic click
+  document.getElementById('file-load').addEventListener('change', handleFileLoad);
+  document.getElementById('btn-load')?.addEventListener('click', load);
   document.getElementById('rat-sw').addEventListener('click',function(){
     S.ratOn=!S.ratOn;this.textContent=S.ratOn?'ON':'OFF';this.classList.toggle('on',S.ratOn);
   });
