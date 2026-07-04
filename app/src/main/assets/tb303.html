@@ -790,121 +790,60 @@ function buildSteps(){
 }
 
 // ── SAVE/LOAD ──────────────────────────────────────
-// ── SAVE / LOAD via localStorage ─────────────────────────
-// Patterns stored in localStorage as JSON
-// Key format: tb303_pat_<name>
-
-function getPatternKeys(){
-  const keys=[];
-  for(let i=0;i<localStorage.length;i++){
-    const k=localStorage.key(i);
-    if(k&&k.startsWith('tb303_pat_'))keys.push(k);
-  }
-  return keys.sort();
-}
-
+// ── SAVE / LOAD — простой localStorage ──────────────
 function save(){
-  const name=prompt('Имя паттерна:','pat_'+(S.curPat+1));
-  if(!name||!name.trim())return;
-  const key='tb303_pat_'+name.trim().replace(/\s+/g,'_');
-  const data=JSON.stringify({
-    name:name.trim(),
-    bpm:S.tempo,
-    timeMode:S.timeMode,
-    pattern:S.patterns[S.curPat]
-  });
-  try{
-    localStorage.setItem(key,data);
-    showMsg('✓ Сохранено: '+name.trim());
-  }catch(e){
-    showMsg('Ошибка сохранения: '+e.message);
-  }
+  const name = prompt('Имя паттерна:', 'pat' + (S.curPat + 1));
+  if (!name) return;
+  const key = 'tb303_' + name.replace(/[^a-zA-Z0-9]/g,'_');
+  localStorage.setItem(key, JSON.stringify({
+    name: name, bpm: S.tempo, timeMode: S.timeMode,
+    pattern: S.patterns[S.curPat]
+  }));
+  alert('Сохранено: ' + name);
 }
 
 function load(){
-  showPatternPicker();
-}
-
-function showPatternPicker(){
-  const keys=getPatternKeys();
-  let modal=document.getElementById('pat-modal');
-  if(!modal){
-    modal=document.createElement('div');
-    modal.id='pat-modal';
-    modal.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;'+
-      'background:rgba(0,0,0,.88);z-index:10000;display:flex;align-items:center;justify-content:center;touch-action:auto;';
-    document.body.appendChild(modal);
+  // Collect all saved patterns
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('tb303_')) keys.push(k);
   }
-  let html='<div style="background:#1e1e1e;border:1px solid #555;border-radius:8px;'+
-    'padding:16px;max-width:380px;width:90vw;max-height:75vh;display:flex;flex-direction:column;gap:8px;">';
-  html+='<div style="color:#ddc050;font-size:13px;font-weight:700;margin-bottom:4px;">📂 Сохранённые паттерны</div>';
-  if(keys.length===0){
-    html+='<div style="color:#888;font-size:12px;padding:12px 0;">Нет сохранённых паттернов.<br>Нажми 💾 чтобы сохранить текущий.</div>';
-  } else {
-    html+='<div style="overflow-y:auto;flex:1;">';
-    keys.forEach(k=>{
-      const name=k.replace('tb303_pat_','');
-      html+=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-        <div onclick="loadKey('${k}')" style="flex:1;padding:10px 12px;
-          background:#2a2a2a;border:1px solid #444;border-radius:4px;cursor:pointer;
-          color:#ccc;font-size:12px;font-family:monospace;">${name}</div>
-        <div onclick="deleteKey('${k}')" style="color:#e44;font-size:18px;
-          cursor:pointer;padding:4px 8px;background:#2a2a2a;border:1px solid #444;
-          border-radius:4px;line-height:1;">✕</div>
-      </div>`;
-    });
-    html+='</div>';
-  }
-  html+='<button onclick="closeModal()" style="width:100%;padding:10px;margin-top:4px;'+
-    'background:#444;border:none;border-radius:4px;color:#fff;font-size:13px;cursor:pointer;">Закрыть</button>';
-  html+='</div>';
-  modal.innerHTML=html;
-  modal.style.display='flex';
-}
+  if (keys.length === 0) { alert('Нет сохранённых паттернов'); return; }
 
-function loadKey(key){
-  closeModal();
-  try{
-    const d=JSON.parse(localStorage.getItem(key));
-    if(!d||!d.pattern||d.pattern.length!==16){showMsg('Неверный формат');return;}
-    S.patterns[S.curPat]=d.pattern;
-    if(d.bpm){
-      S.tempo=Math.round(d.bpm);
-      document.getElementById('bpmv').textContent=S.tempo;
-      const kd=document.querySelector('#k-tempo .kdot');
-      if(kd)kd.style.transform=`translate(-50%,-100%) rotate(${-135+((S.tempo-40)/200)*270}deg)`;
+  // Build menu string
+  let menu = 'Выбери номер паттерна:\n';
+  keys.forEach((k, i) => {
+    menu += (i + 1) + ') ' + k.replace('tb303_', '') + '\n';
+  });
+  menu += '\n0) Отмена';
+
+  const choice = prompt(menu);
+  if (!choice || choice === '0') return;
+  const idx = parseInt(choice) - 1;
+  if (isNaN(idx) || idx < 0 || idx >= keys.length) return;
+
+  try {
+    const d = JSON.parse(localStorage.getItem(keys[idx]));
+    if (!d || !d.pattern || d.pattern.length !== 16) { alert('Неверный формат'); return; }
+    S.patterns[S.curPat] = d.pattern;
+    if (d.bpm) {
+      S.tempo = Math.round(d.bpm);
+      document.getElementById('bpmv').textContent = S.tempo;
+      const kd = document.querySelector('#k-tempo .kdot');
+      if (kd) kd.style.transform = `translate(-50%,-100%) rotate(${-135+((S.tempo-40)/200)*270}deg)`;
     }
-    if(d.timeMode!=null){
-      S.timeMode=d.timeMode;
-      document.querySelectorAll('.tbtn').forEach((b,i)=>b.classList.toggle('on',i===S.timeMode));
+    if (d.timeMode != null) {
+      S.timeMode = d.timeMode;
+      document.querySelectorAll('.tbtn').forEach((b,i) => b.classList.toggle('on', i === S.timeMode));
     }
     renderPat();
-    showMsg('✓ Загружено: '+key.replace('tb303_pat_',''));
-  }catch(e){showMsg('Ошибка: '+e.message);}
-}
-
-function deleteKey(key){
-  if(!confirm('Удалить '+key.replace('tb303_pat_','')+'?'))return;
-  localStorage.removeItem(key);
-  showPatternPicker();
-}
-
-function closeModal(){
-  const m=document.getElementById('pat-modal');
-  if(m)m.style.display='none';
+    alert('Загружено: ' + d.name);
+  } catch(e) { alert('Ошибка: ' + e.message); }
 }
 
 function showMsg(txt){
-  let el=document.getElementById('toast-msg');
-  if(!el){
-    el=document.createElement('div');el.id='toast-msg';
-    el.style.cssText='position:fixed;bottom:4vh;left:50%;transform:translateX(-50%);'+
-      'background:rgba(0,0,0,.9);color:#ffe;font:700 12px monospace;'+
-      'padding:8px 16px;border-radius:4px;z-index:9998;white-space:nowrap;pointer-events:none;';
-    document.body.appendChild(el);
-  }
-  el.textContent=txt;el.style.display='block';
-  clearTimeout(el._t);el._t=setTimeout(()=>el.style.display='none',2500);
+  alert(txt);
 }
 
 function handleFileLoad(e){
