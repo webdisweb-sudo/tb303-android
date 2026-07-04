@@ -790,16 +790,121 @@ function buildSteps(){
 }
 
 // ── SAVE/LOAD ──────────────────────────────────────
-function save(){
-  const name=prompt('Имя паттерна:','pat_'+(S.curPat+1));if(!name)return;
-  const blob=new Blob([JSON.stringify({name,bpm:S.tempo,timeMode:S.timeMode,
-    pattern:S.patterns[S.curPat]},null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=name.replace(/\s+/g,'_')+'.tb303';a.click();
+// Called by Java after successful save
+function onSaveSuccess(filename){
+  showMsg('✓ Сохранено: Downloads/TB303/' + filename);
 }
+
+function save(){
+  const name=prompt('Имя паттерна:','pat_'+(S.curPat+1));
+  if(!name)return;
+  const data=JSON.stringify({
+    name, bpm:S.tempo, timeMode:S.timeMode,
+    pattern:S.patterns[S.curPat]
+  }, null, 2);
+
+  if(window.Android){
+    // Android WebView — save via Java bridge to Downloads/TB303/
+    window.Android.savePattern(name, data);
+  } else {
+    // Browser fallback — download file
+    const blob=new Blob([data],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=name.replace(/\s+/g,'_')+'.tb303';
+    a.click();
+  }
+}
+
 function load(){
-  // Trigger the persistent hidden file input (works in Android WebView)
-  document.getElementById('file-load').click();
+  if(window.Android){
+    // Android — show pattern picker from Downloads/TB303/
+    showPatternPicker();
+  } else {
+    // Browser fallback — file input
+    document.getElementById('file-load').click();
+  }
+}
+
+function showPatternPicker(){
+  const list=JSON.parse(window.Android.listPatterns()||'[]');
+  if(list.length===0){
+    showMsg('Нет паттернов в Downloads/TB303/');
+    return;
+  }
+  // Build picker modal
+  let modal=document.getElementById('pat-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='pat-modal';
+    modal.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;'+
+      'background:rgba(0,0,0,.85);z-index:10000;display:flex;align-items:center;justify-content:center;';
+    document.body.appendChild(modal);
+  }
+  let html='<div style="background:#222;border:1px solid #555;border-radius:8px;'+
+    'padding:16px;max-width:400px;width:90%;max-height:80vh;overflow-y:auto;">'+
+    '<div style="color:#ddc050;font-size:14px;font-weight:700;margin-bottom:12px;">'+
+    '📂 Downloads/TB303/</div>';
+  list.forEach(f=>{
+    html+=`<div onclick="loadFile('${f}')" style="padding:10px 12px;margin-bottom:4px;`+
+      `background:#333;border:1px solid #444;border-radius:4px;cursor:pointer;`+
+      `color:#ccc;font-size:12px;display:flex;justify-content:space-between;align-items:center;">`+
+      `<span>${f}</span>`+
+      `<span onclick="event.stopPropagation();deleteFile('${f}')" `+
+      `style="color:#e44;font-size:16px;padding:0 4px;">✕</span></div>`;
+  });
+  html+='<button onclick="closeModal()" style="width:100%;margin-top:12px;padding:10px;'+
+    'background:#555;border:none;border-radius:4px;color:#fff;font-size:13px;cursor:pointer;">Отмена</button>';
+  html+='</div>';
+  modal.innerHTML=html;
+  modal.style.display='flex';
+}
+
+function loadFile(filename){
+  closeModal();
+  const json=window.Android.readPattern(filename);
+  if(!json){showMsg('Ошибка чтения файла');return;}
+  try{
+    const d=JSON.parse(json);
+    if(!d.pattern||d.pattern.length!==16){showMsg('Неверный формат');return;}
+    S.patterns[S.curPat]=d.pattern;
+    if(d.bpm){
+      S.tempo=d.bpm;
+      document.getElementById('bpmv').textContent=Math.round(S.tempo);
+      const kd=document.querySelector('#k-tempo .kdot');
+      if(kd)kd.style.transform=`translate(-50%,-100%) rotate(${-135+((S.tempo-40)/200)*270}deg)`;
+    }
+    if(d.timeMode!=null){
+      S.timeMode=d.timeMode;
+      document.querySelectorAll('.tbtn').forEach((b,i)=>b.classList.toggle('on',i===S.timeMode));
+    }
+    renderPat();
+    showMsg('✓ Загружено: '+filename);
+  }catch(e){showMsg('Ошибка: '+e.message);}
+}
+
+function deleteFile(filename){
+  if(!confirm('Удалить '+filename+'?'))return;
+  window.Android.deletePattern(filename);
+  showPatternPicker(); // refresh list
+}
+
+function closeModal(){
+  const m=document.getElementById('pat-modal');
+  if(m)m.style.display='none';
+}
+
+function showMsg(txt){
+  let el=document.getElementById('toast-msg');
+  if(!el){
+    el=document.createElement('div');el.id='toast-msg';
+    el.style.cssText='position:fixed;bottom:4vh;left:50%;transform:translateX(-50%);'+
+      'background:rgba(0,0,0,.9);color:#ffe;font:700 12px monospace;'+
+      'padding:8px 16px;border-radius:4px;z-index:9998;white-space:nowrap;';
+    document.body.appendChild(el);
+  }
+  el.textContent=txt;el.style.display='block';
+  clearTimeout(el._t);el._t=setTimeout(()=>el.style.display='none',2500);
 }
 
 function handleFileLoad(e){
@@ -808,25 +913,16 @@ function handleFileLoad(e){
   r.onload=ev=>{
     try{
       const d=JSON.parse(ev.target.result);
-      if(!d.pattern||d.pattern.length!==16){alert('Неверный формат');return;}
+      if(!d.pattern||d.pattern.length!==16){showMsg('Неверный формат');return;}
       S.patterns[S.curPat]=d.pattern;
-      if(d.bpm){
-        S.tempo=d.bpm;
-        document.getElementById('bpmv').textContent=Math.round(S.tempo);
-        const kd=document.querySelector('#k-tempo .kdot');
-        if(kd)kd.style.transform=`translate(-50%,-100%) rotate(${-135+((S.tempo-40)/200)*270}deg)`;
-      }
+      if(d.bpm){S.tempo=d.bpm;document.getElementById('bpmv').textContent=Math.round(S.tempo);}
       if(d.timeMode!=null){
         S.timeMode=d.timeMode;
         document.querySelectorAll('.tbtn').forEach((b,i)=>b.classList.toggle('on',i===S.timeMode));
       }
-      renderPat();
-      // Reset input so same file can be loaded again
-      e.target.value='';
-      alert('✓ Загружено: '+(d.name||f.name));
-    }catch(err){alert('Ошибка: '+err.message);}
-  };
-  r.readAsText(f);
+      renderPat();e.target.value='';showMsg('✓ '+f.name);
+    }catch(err){showMsg('Ошибка: '+err.message);}
+  };r.readAsText(f);
 }
 
 // ── TAP TEMPO ──────────────────────────────────────
