@@ -817,11 +817,17 @@ function save(){
 }
 
 function load(){
-  if(window.Android){
-    // Android — show pattern picker from Downloads/TB303/
+  // Debug: check what's available
+  console.log('Android bridge:', typeof window.Android);
+  console.log('Android methods:', window.Android ? Object.keys(window.Android) : 'none');
+  
+  if(window.Android && typeof window.Android.listPatterns === 'function'){
     showPatternPicker();
+  } else if(window.Android){
+    showMsg('Bridge найден, но методы недоступны. Перезапусти APK.');
+    console.log('Bridge exists but listPatterns missing');
   } else {
-    // Browser fallback — file input
+    // Browser fallback
     document.getElementById('file-load').click();
   }
 }
@@ -1072,6 +1078,18 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('btn-save').addEventListener('click',save);
   // File input listener — works in Android WebView unlike programmatic click
   document.getElementById('file-load').addEventListener('change', handleFileLoad);
+  
+  // Check Android bridge availability after short delay
+  setTimeout(()=>{
+    if(window.Android && typeof window.Android.listPatterns === 'function'){
+      console.log('Android bridge OK');
+      // Mark load button green to indicate bridge works
+      const lb = document.getElementById('btn-load');
+      if(lb) lb.style.boxShadow = '0 0 4px #4f4';
+    } else {
+      console.log('Android bridge NOT available - using file input fallback');
+    }
+  }, 500);
   document.getElementById('btn-load')?.addEventListener('click', load);
   document.getElementById('rat-sw').addEventListener('click',function(){
     S.ratOn=!S.ratOn;this.textContent=S.ratOn?'ON':'OFF';this.classList.toggle('on',S.ratOn);
