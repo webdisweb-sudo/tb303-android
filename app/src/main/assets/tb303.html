@@ -790,93 +790,87 @@ function buildSteps(){
 }
 
 // ── SAVE/LOAD ──────────────────────────────────────
-// Called by Java after successful save
-function onSaveSuccess(filename){
-  showMsg('✓ Сохранено: Downloads/TB303/' + filename);
+// ── SAVE / LOAD via localStorage ─────────────────────────
+// Patterns stored in localStorage as JSON
+// Key format: tb303_pat_<name>
+
+function getPatternKeys(){
+  const keys=[];
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k&&k.startsWith('tb303_pat_'))keys.push(k);
+  }
+  return keys.sort();
 }
 
 function save(){
   const name=prompt('Имя паттерна:','pat_'+(S.curPat+1));
-  if(!name)return;
+  if(!name||!name.trim())return;
+  const key='tb303_pat_'+name.trim().replace(/\s+/g,'_');
   const data=JSON.stringify({
-    name, bpm:S.tempo, timeMode:S.timeMode,
+    name:name.trim(),
+    bpm:S.tempo,
+    timeMode:S.timeMode,
     pattern:S.patterns[S.curPat]
-  }, null, 2);
-
-  if(window.Android){
-    // Android WebView — save via Java bridge to Downloads/TB303/
-    window.Android.savePattern(name, data);
-  } else {
-    // Browser fallback — download file
-    const blob=new Blob([data],{type:'application/json'});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download=name.replace(/\s+/g,'_')+'.tb303';
-    a.click();
+  });
+  try{
+    localStorage.setItem(key,data);
+    showMsg('✓ Сохранено: '+name.trim());
+  }catch(e){
+    showMsg('Ошибка сохранения: '+e.message);
   }
 }
 
 function load(){
-  // Debug: check what's available
-  console.log('Android bridge:', typeof window.Android);
-  console.log('Android methods:', window.Android ? Object.keys(window.Android) : 'none');
-  
-  if(window.Android && typeof window.Android.listPatterns === 'function'){
-    showPatternPicker();
-  } else if(window.Android){
-    showMsg('Bridge найден, но методы недоступны. Перезапусти APK.');
-    console.log('Bridge exists but listPatterns missing');
-  } else {
-    // Browser fallback
-    document.getElementById('file-load').click();
-  }
+  showPatternPicker();
 }
 
 function showPatternPicker(){
-  const list=JSON.parse(window.Android.listPatterns()||'[]');
-  if(list.length===0){
-    showMsg('Нет паттернов в Downloads/TB303/');
-    return;
-  }
-  // Build picker modal
+  const keys=getPatternKeys();
   let modal=document.getElementById('pat-modal');
   if(!modal){
     modal=document.createElement('div');
     modal.id='pat-modal';
     modal.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;'+
-      'background:rgba(0,0,0,.85);z-index:10000;display:flex;align-items:center;justify-content:center;';
+      'background:rgba(0,0,0,.88);z-index:10000;display:flex;align-items:center;justify-content:center;touch-action:auto;';
     document.body.appendChild(modal);
   }
-  let html='<div style="background:#222;border:1px solid #555;border-radius:8px;'+
-    'padding:16px;max-width:400px;width:90%;max-height:80vh;overflow-y:auto;">'+
-    '<div style="color:#ddc050;font-size:14px;font-weight:700;margin-bottom:12px;">'+
-    '📂 Downloads/TB303/</div>';
-  list.forEach(f=>{
-    html+=`<div onclick="loadFile('${f}')" style="padding:10px 12px;margin-bottom:4px;`+
-      `background:#333;border:1px solid #444;border-radius:4px;cursor:pointer;`+
-      `color:#ccc;font-size:12px;display:flex;justify-content:space-between;align-items:center;">`+
-      `<span>${f}</span>`+
-      `<span onclick="event.stopPropagation();deleteFile('${f}')" `+
-      `style="color:#e44;font-size:16px;padding:0 4px;">✕</span></div>`;
-  });
-  html+='<button onclick="closeModal()" style="width:100%;margin-top:12px;padding:10px;'+
-    'background:#555;border:none;border-radius:4px;color:#fff;font-size:13px;cursor:pointer;">Отмена</button>';
+  let html='<div style="background:#1e1e1e;border:1px solid #555;border-radius:8px;'+
+    'padding:16px;max-width:380px;width:90vw;max-height:75vh;display:flex;flex-direction:column;gap:8px;">';
+  html+='<div style="color:#ddc050;font-size:13px;font-weight:700;margin-bottom:4px;">📂 Сохранённые паттерны</div>';
+  if(keys.length===0){
+    html+='<div style="color:#888;font-size:12px;padding:12px 0;">Нет сохранённых паттернов.<br>Нажми 💾 чтобы сохранить текущий.</div>';
+  } else {
+    html+='<div style="overflow-y:auto;flex:1;">';
+    keys.forEach(k=>{
+      const name=k.replace('tb303_pat_','');
+      html+=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <div onclick="loadKey('${k}')" style="flex:1;padding:10px 12px;
+          background:#2a2a2a;border:1px solid #444;border-radius:4px;cursor:pointer;
+          color:#ccc;font-size:12px;font-family:monospace;">${name}</div>
+        <div onclick="deleteKey('${k}')" style="color:#e44;font-size:18px;
+          cursor:pointer;padding:4px 8px;background:#2a2a2a;border:1px solid #444;
+          border-radius:4px;line-height:1;">✕</div>
+      </div>`;
+    });
+    html+='</div>';
+  }
+  html+='<button onclick="closeModal()" style="width:100%;padding:10px;margin-top:4px;'+
+    'background:#444;border:none;border-radius:4px;color:#fff;font-size:13px;cursor:pointer;">Закрыть</button>';
   html+='</div>';
   modal.innerHTML=html;
   modal.style.display='flex';
 }
 
-function loadFile(filename){
+function loadKey(key){
   closeModal();
-  const json=window.Android.readPattern(filename);
-  if(!json){showMsg('Ошибка чтения файла');return;}
   try{
-    const d=JSON.parse(json);
-    if(!d.pattern||d.pattern.length!==16){showMsg('Неверный формат');return;}
+    const d=JSON.parse(localStorage.getItem(key));
+    if(!d||!d.pattern||d.pattern.length!==16){showMsg('Неверный формат');return;}
     S.patterns[S.curPat]=d.pattern;
     if(d.bpm){
-      S.tempo=d.bpm;
-      document.getElementById('bpmv').textContent=Math.round(S.tempo);
+      S.tempo=Math.round(d.bpm);
+      document.getElementById('bpmv').textContent=S.tempo;
       const kd=document.querySelector('#k-tempo .kdot');
       if(kd)kd.style.transform=`translate(-50%,-100%) rotate(${-135+((S.tempo-40)/200)*270}deg)`;
     }
@@ -885,14 +879,14 @@ function loadFile(filename){
       document.querySelectorAll('.tbtn').forEach((b,i)=>b.classList.toggle('on',i===S.timeMode));
     }
     renderPat();
-    showMsg('✓ Загружено: '+filename);
+    showMsg('✓ Загружено: '+key.replace('tb303_pat_',''));
   }catch(e){showMsg('Ошибка: '+e.message);}
 }
 
-function deleteFile(filename){
-  if(!confirm('Удалить '+filename+'?'))return;
-  window.Android.deletePattern(filename);
-  showPatternPicker(); // refresh list
+function deleteKey(key){
+  if(!confirm('Удалить '+key.replace('tb303_pat_','')+'?'))return;
+  localStorage.removeItem(key);
+  showPatternPicker();
 }
 
 function closeModal(){
@@ -906,7 +900,7 @@ function showMsg(txt){
     el=document.createElement('div');el.id='toast-msg';
     el.style.cssText='position:fixed;bottom:4vh;left:50%;transform:translateX(-50%);'+
       'background:rgba(0,0,0,.9);color:#ffe;font:700 12px monospace;'+
-      'padding:8px 16px;border-radius:4px;z-index:9998;white-space:nowrap;';
+      'padding:8px 16px;border-radius:4px;z-index:9998;white-space:nowrap;pointer-events:none;';
     document.body.appendChild(el);
   }
   el.textContent=txt;el.style.display='block';
