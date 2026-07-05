@@ -1102,22 +1102,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     }
   });
   document.getElementById('btn-tap').addEventListener('click',tap);
-  document.getElementById('btn-save').addEventListener('click',save);
   // File input listener — works in Android WebView unlike programmatic click
   document.getElementById('file-load').addEventListener('change', handleFileLoad);
   
-  // Check Android bridge availability after short delay
-  setTimeout(()=>{
-    if(window.Android && typeof window.Android.listPatterns === 'function'){
-      console.log('Android bridge OK');
-      // Mark load button green to indicate bridge works
-      const lb = document.getElementById('btn-load');
-      if(lb) lb.style.boxShadow = '0 0 4px #4f4';
-    } else {
-      console.log('Android bridge NOT available - using file input fallback');
-    }
-  }, 500);
-  document.getElementById('btn-load')?.addEventListener('click', load);
   document.getElementById('rat-sw').addEventListener('click',function(){
     S.ratOn=!S.ratOn;this.textContent=S.ratOn?'ON':'OFF';this.classList.toggle('on',S.ratOn);
   });
