@@ -809,7 +809,6 @@ function load(){
 }
 
 function showPatManager(){
-  // Remove existing
   const old = document.getElementById('pat-mgr');
   if (old) old.remove();
 
@@ -822,11 +821,15 @@ function showPatManager(){
     'display:flex;align-items:center;justify-content:center',
   ].join(';');
 
-  // Collect patterns
+  // Collect ALL keys that contain valid pattern data (any prefix)
   const keys = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (k && k.startsWith(LS_PREFIX)) keys.push(k);
+    if (!k) continue;
+    try {
+      const d = JSON.parse(localStorage.getItem(k));
+      if (d && Array.isArray(d.pattern) && d.pattern.length === 16) keys.push(k);
+    } catch(e) {}
   }
   keys.sort();
 
@@ -862,7 +865,7 @@ function showPatManager(){
     listWrap.appendChild(empty);
   } else {
     keys.forEach(k => {
-      const name = k.replace(LS_PREFIX, '');
+      const name = k.replace(/^tb303_pat_|^tb303_/,'') || k;
       const row = document.createElement('div');
       row.style.cssText = [
         'display:flex;align-items:center;gap:6px',
