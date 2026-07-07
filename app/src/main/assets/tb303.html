@@ -548,9 +548,64 @@ function getStepDur(){
 }
 
 function distCurve(k){
-  const n=512,c=new Float32Array(n),g=k*200+1;
-  for(let i=0;i<n;i++){const x=(i*2)/n-1;c[i]=(Math.PI+g)*x/(Math.PI+g*Math.abs(x));}
+  // RAT-style distortion:
+  // 1. Soft-knee asymmetric clipping (opamp saturation character)
+  // 2. Even + odd harmonics mix (germanium diode asymmetry)
+  // 3. Smooth knee — not hard digital clip
+  const n = 1024;
+  const c = new Float32Array(n);
+  // Drive: RAT uses LM308 opamp, very high gain before diode clip
+  const drive = 1 + k * 80;
+  for (let i = 0; i < n; i++) {
+    let x = (i * 2) / n - 1;
+    // Pre-gain
+    let y = x * drive;
+    // Asymmetric soft clipping — positive and negative sides differ
+    // like 1N914 diodes (slightly different forward voltage)
+    if (y > 0) {
+      // Positive: softer knee (silicon diode ~0.7V)
+      y = 1 - Math.exp(-Math.abs(y) * 1.2);
+    } else {
+      // Negative: harder knee (asymmetry = even harmonics = warmth)
+      y = -(1 - Math.exp(-Math.abs(y) * 0.9));
+    }
+    // Slight bias offset (opamp DC offset character)
+    y = y * 0.95 + x * 0.05;
+    c[i] = Math.max(-1, Math.min(1, y));
+  }
   return c;
+}
+
+function makeRATFilter(a, inputNode) {
+  // RAT tone control: unique lowpass AFTER distortion
+  // Real RAT cuts highs — tone knob goes from dark to less-dark
+  // Also add a subtle resonance peak around 800Hz (opamp frequency response)
+  
+  // High-shelf cut (removes digital harshness)
+  const hicut = a.createBiquadFilter();
+  hicut.type = 'highshelf';
+  hicut.frequency.value = 3000;
+  hicut.gain.value = -18; // heavily cut highs after distortion
+  
+  // Gentle low-mid peak (body/warmth)
+  const peak = a.createBiquadFilter();
+  peak.type = 'peaking';
+  peak.frequency.value = 400;
+  peak.Q.value = 0.8;
+  peak.gain.value = 4;
+  
+  // User tone control (lowpass)
+  const tone = a.createBiquadFilter();
+  tone.type = 'lowpass';
+  // Tone knob: 0 = very dark (300Hz), 1 = less dark (4kHz)
+  // Real RAT tone is cut-only, not boost
+  tone.frequency.value = 300 + S.ratFlt * 3700;
+  tone.Q.value = 0.5;
+  
+  inputNode.connect(hicut);
+  hicut.connect(peak);
+  peak.connect(tone);
+  return tone;
 }
 
 function schedNote(t,step,dur){
