@@ -1,0 +1,98 @@
+name: Build TB-303 Windows EXE
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Create Electron app structure
+        shell: bash
+        run: |
+          mkdir -p electron-app
+          cp app/src/main/assets/tb303.html electron-app/
+
+          cat > electron-app/package.json << 'PKGJSON'
+          {
+            "name": "tb303",
+            "version": "1.0.0",
+            "description": "Roland TB-303 Bass Line Emulator",
+            "main": "main.js",
+            "scripts": {
+              "start": "electron .",
+              "build": "electron-builder --win --x64"
+            },
+            "build": {
+              "appId": "com.tb303.app",
+              "productName": "TB-303",
+              "win": {
+                "target": "portable",
+                "icon": "icon.ico"
+              },
+              "files": ["main.js", "tb303.html"]
+            },
+            "devDependencies": {
+              "electron": "^28.0.0",
+              "electron-builder": "^24.0.0"
+            }
+          }
+          PKGJSON
+
+          cat > electron-app/main.js << 'MAINJSON'
+          const { app, BrowserWindow } = require('electron');
+          const path = require('path');
+
+          function createWindow() {
+            const win = new BrowserWindow({
+              width: 1280,
+              height: 680,
+              minWidth: 800,
+              minHeight: 450,
+              title: 'Roland TB-303 Bass Line',
+              backgroundColor: '#111111',
+              webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true
+              }
+            });
+
+            win.loadFile('tb303.html');
+            win.setMenuBarVisibility(false);
+          }
+
+          app.whenReady().then(() => {
+            createWindow();
+            app.on('activate', () => {
+              if (BrowserWindow.getAllWindows().length === 0) createWindow();
+            });
+          });
+
+          app.on('window-all-closed', () => {
+            if (process.platform !== 'darwin') app.quit();
+          });
+          MAINJSON
+
+      - name: Install dependencies
+        working-directory: electron-app
+        run: npm install
+
+      - name: Build Windows EXE
+        working-directory: electron-app
+        run: npm run build
+
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: TB303-Windows
+          path: electron-app/dist/*.exe
+          retention-days: 30
